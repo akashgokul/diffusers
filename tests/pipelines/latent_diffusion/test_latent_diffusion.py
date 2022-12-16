@@ -22,13 +22,11 @@ from diffusers import AutoencoderKL, DDIMScheduler, LDMTextToImagePipeline, UNet
 from diffusers.utils.testing_utils import require_torch, slow, torch_device
 from transformers import CLIPTextConfig, CLIPTextModel, CLIPTokenizer
 
-from ...test_pipelines_common import PipelineTesterMixin
-
 
 torch.backends.cuda.matmul.allow_tf32 = False
 
 
-class LDMTextToImagePipelineFastTests(PipelineTesterMixin, unittest.TestCase):
+class LDMTextToImagePipelineFastTests(unittest.TestCase):
     @property
     def dummy_cond_unet(self):
         torch.manual_seed(0)
@@ -74,6 +72,9 @@ class LDMTextToImagePipelineFastTests(PipelineTesterMixin, unittest.TestCase):
         return CLIPTextModel(config)
 
     def test_inference_text2img(self):
+        if torch_device != "cpu":
+            return
+
         unet = self.dummy_cond_unet
         scheduler = DDIMScheduler()
         vae = self.dummy_vae
@@ -93,12 +94,16 @@ class LDMTextToImagePipelineFastTests(PipelineTesterMixin, unittest.TestCase):
                 [prompt], generator=generator, guidance_scale=6.0, num_inference_steps=1, output_type="numpy"
             ).images
 
-        generator = torch.manual_seed(0)
+        device = torch_device if torch_device != "mps" else "cpu"
+        generator = torch.Generator(device=device).manual_seed(0)
+
         image = ldm(
             [prompt], generator=generator, guidance_scale=6.0, num_inference_steps=2, output_type="numpy"
         ).images
 
-        generator = torch.manual_seed(0)
+        device = torch_device if torch_device != "mps" else "cpu"
+        generator = torch.Generator(device=device).manual_seed(0)
+
         image_from_tuple = ldm(
             [prompt],
             generator=generator,
@@ -126,7 +131,10 @@ class LDMTextToImagePipelineIntegrationTests(unittest.TestCase):
         ldm.set_progress_bar_config(disable=None)
 
         prompt = "A painting of a squirrel eating a burger"
-        generator = torch.manual_seed(0)
+
+        device = torch_device if torch_device != "mps" else "cpu"
+        generator = torch.Generator(device=device).manual_seed(0)
+
         image = ldm(
             [prompt], generator=generator, guidance_scale=6.0, num_inference_steps=20, output_type="numpy"
         ).images
@@ -143,7 +151,10 @@ class LDMTextToImagePipelineIntegrationTests(unittest.TestCase):
         ldm.set_progress_bar_config(disable=None)
 
         prompt = "A painting of a squirrel eating a burger"
-        generator = torch.manual_seed(0)
+
+        device = torch_device if torch_device != "mps" else "cpu"
+        generator = torch.Generator(device=device).manual_seed(0)
+
         image = ldm(prompt, generator=generator, num_inference_steps=1, output_type="numpy").images
 
         image_slice = image[0, -3:, -3:, -1]
